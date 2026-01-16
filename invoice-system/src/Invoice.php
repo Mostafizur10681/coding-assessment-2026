@@ -42,7 +42,7 @@ class Invoice {
         $total = 0;
         foreach ($this->items as $item) {
             // Accessing 'quantity' but we stored it as 'qty'!
-            $total += $item['price'] * $item['quantity'];
+            $total += $item['price'] * $item['qty'];
         }
         return $total - $this->discount;
     }
@@ -105,16 +105,23 @@ class Invoice {
      * Should APPEND to the file, not replace it
      */
     public function saveToFile($filename = 'data/invoices.json') {
-        $data = $this->toArray();
+        $data = [];
 
-        // This is wrong - overwrites the whole file!
-        // Should load existing invoices and append
-        // But json_encode is easier for now...
+        // Load existing invoices if file exists
+        if (file_exists($filename)) {
+            $contents = file_get_contents($filename);
+            $data = json_decode($contents, true) ?: [];
+        }
+
+        // Append current invoice
+        $data[] = $this->toArray();
+
+        // Save back to file
         file_put_contents($filename, json_encode($data, JSON_PRETTY_PRINT));
 
-        // TODO: Fix this before client demo!
         return true;
     }
+
 
     /**
      * Load invoice from file by ID
@@ -126,13 +133,7 @@ class Invoice {
         }
 
         $contents = file_get_contents($filename);
-        $invoices = json_decode($contents, true);
-
-        // Handle both single invoice and array of invoices
-        // (since saveToFile is broken and only saves one)
-        if (isset($invoices['id'])) {
-            $invoices = [$invoices];
-        }
+        $invoices = json_decode($contents, true) ?: [];
 
         foreach ($invoices as $invoiceData) {
             if ($invoiceData['id'] == $id) {
@@ -141,8 +142,7 @@ class Invoice {
                 $invoice->discount = $invoiceData['discount'];
 
                 foreach ($invoiceData['items'] as $item) {
-                    // This might break because of the qty/quantity issue
-                    $qty = isset($item['quantity']) ? $item['quantity'] : $item['qty'];
+                    $qty = $item['qty'] ?$item['qty'] : 0;  // fix qty key
                     $invoice->addItem($item['name'], $item['price'], $qty);
                 }
 
