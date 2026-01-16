@@ -1,122 +1,90 @@
 <?php
+require_once __DIR__ . '/../vendor/autoload.php'; // Load Composer packages
+use Dompdf\Dompdf;
 
-/**
- * PDFGenerator - Generate PDF invoices
- *
- * Status: NOT IMPLEMENTED
- *
- * UPDATE (Monday morning): Policy changed - Composer packages are now APPROVED!
- * You may use any PDF library: FPDF, TCPDF, Dompdf, or others.
- *
- * Previous blocker (resolved):
- * - Was blocked on "no external libraries" policy
- * - Policy has been updated - external libraries now allowed
- * - Can proceed with implementation using Composer packages
- */
 class PDFGenerator {
 
     /**
-     * Generate PDF from invoice
-     *
-     * UPDATE (Monday): Composer packages are now APPROVED!
-     *
-     * Suggested approaches:
-     * - FPDF: Lightweight, simple API
-     * - TCPDF: More features, HTML support
-     * - Dompdf: HTML/CSS to PDF conversion
-     *
-     * Requirements:
-     * - Generate PDF from invoice data
-     * - Include all invoice details (items, totals, tax, etc.)
-     * - Return file path or PDF content
+     * Generate PDF from an Invoice
      *
      * @param Invoice $invoice
-     * @return string PDF file path or content
-     * @throws Exception Currently not implemented
+     * @return void (PDF streamed to browser)
      */
-    public function generatePDF($invoice) {
-        throw new Exception(
-            "PDF generation not implemented. " .
-            "You may now use Composer packages (FPDF, TCPDF, Dompdf, etc.)."
-        );
-    }
+    public static function generatePDF($invoice) {
+        $dompdf = new Dompdf();
 
-    /**
-     * Generate HTML version of invoice
-     * Started this as potential workaround
-     *
-     * Idea: Generate nice HTML, client can print to PDF from browser?
-     * Not ideal but might be acceptable
-     *
-     * @param Invoice $invoice
-     * @return string HTML content
-     */
-    private function generateHTML($invoice) {
-        // Basic template - would need styling
-        $html = '<html><head><title>Invoice</title></head><body>';
-        $html .= '<h1>Invoice #' . $invoice->getId() . '</h1>';
-        $html .= '<p>Customer: ' . htmlspecialchars($invoice->getCustomer()) . '</p>';
-        $html .= '<table border="1">';
-        $html .= '<tr><th>Item</th><th>Price</th><th>Quantity</th><th>Total</th></tr>';
-
+        // Build HTML table for items
+        $itemsHtml = '';
         foreach ($invoice->getItems() as $item) {
-            $qty = isset($item['quantity']) ? $item['quantity'] : $item['qty'];
+            $qty = $item['qty'] ?? 0;
             $lineTotal = $item['price'] * $qty;
-
-            $html .= '<tr>';
-            $html .= '<td>' . htmlspecialchars($item['name']) . '</td>';
-            $html .= '<td>$' . number_format($item['price'], 2) . '</td>';
-            $html .= '<td>' . $qty . '</td>';
-            $html .= '<td>$' . number_format($lineTotal, 2) . '</td>';
-            $html .= '</tr>';
+            $itemsHtml .= "<tr>
+            <td>".htmlspecialchars($item['name'])."</td>
+            <td>$".number_format($item['price'], 2)."</td>
+            <td>$qty</td>
+            <td>$".number_format($lineTotal, 2)."</td>
+        </tr>";
         }
 
-        $html .= '</table>';
-        $html .= '<p><strong>Total: $' . number_format($invoice->getTotal(), 2) . '</strong></p>';
-        $html .= '</body></html>';
+        $html = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            h1 { text-align: center; }
+            p { font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <h1>Invoice #{$invoice->getId()}</h1>
+        <p><strong>Customer:</strong> ".htmlspecialchars($invoice->getCustomer())."</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                $itemsHtml
+            </tbody>
+        </table>
+        <p><strong>Total: $".number_format($invoice->getTotal(), 2)."</strong></p>
+    </body>
+    </html>
+    ";
 
-        return $html;
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $fileName = 'Invoice_'.$invoice->getId().'.pdf';
+
+        // **Directly save PDF to file**
+        file_put_contents($fileName, $dompdf->output());
+
+        return $fileName; // Returns the path to generated PDF
     }
 
+
     /**
-     * Export invoice as HTML (workaround for PDF)
-     * At least this works...
+     * Optional: Export invoice as HTML file
+     * Fallback if PDF generation is not desired
      *
      * @param Invoice $invoice
-     * @return string HTML file path
+     * @return string Filename of generated HTML
      */
-    public function exportHTML($invoice) {
-        $html = $this->generateHTML($invoice);
+    public static function exportHTML($invoice) {
         $filename = 'invoice_' . $invoice->getId() . '.html';
+        $html = "<h1>Invoice #{$invoice->getId()}</h1>";
+        $html .= "<p>Customer: ".htmlspecialchars($invoice->getCustomer())."</p>";
+        $html .= "<p>Total: $".number_format($invoice->getTotal(), 2)."</p>";
         file_put_contents($filename, $html);
         return $filename;
-    }
-
-    /**
-     * Attempted to write raw PDF - gave up after 2 hours
-     * Keeping this as evidence of how hard this is
-     */
-    private function generateRawPDF_ABANDONED($invoice) {
-        // PDF header
-        // %PDF-1.4
-        // Then you need:
-        // - Catalog object
-        // - Pages object
-        // - Page object
-        // - Content stream
-        // - Font definitions
-        // - Cross-reference table
-        // - Trailer
-        //
-        // Each object has specific byte offsets that need to be calculated
-        // Text positioning uses PostScript-like commands
-        // Fonts need to be embedded or referenced correctly
-        //
-        // This is insane to do by hand for a simple invoice
-        // Would take days to get right
-        //
-        // ABANDONED THIS APPROACH
-
-        return "nope nope nope";
     }
 }
