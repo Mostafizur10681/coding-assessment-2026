@@ -26,7 +26,18 @@ class Invoice {
      * Note: Make sure to use consistent naming!
      */
     public function addItem($name, $price, $quantity) {
-        // No validation yet - add later?
+        // Input validation
+        if (empty($name)) {
+            throw new Exception("Item name cannot be empty");
+        }
+
+        if (!is_numeric($price) || $price < 0) {
+            throw new Exception("Price must be a non-negative number");
+        }
+
+        if (!is_int($quantity) || $quantity <= 0) {
+            throw new Exception("Quantity must be a positive integer");
+        }
         $this->items[] = [
             'name' => $name,
             'price' => $price,
@@ -53,15 +64,11 @@ class Invoice {
      * TODO: Client hasn't decided on the business rules yet
      */
     public function applyDiscount($percent) {
-        // Started implementing but not sure about requirements
-        // throw new Exception("Not implemented - waiting on client clarification");
-
-        // Trying basic implementation but commented out until we get clarity
-        // $subtotal = $this->getTotal();
-        // $this->discount = $subtotal * ($percent / 100);
-
-        // For now just throw exception
-        throw new Exception("Discount feature incomplete - need business rules from client");
+        if (!is_numeric($percent) || $percent < 0 || $percent > 100) {
+            throw new Exception("Discount percent must be between 0 and 100");
+        }
+        $subtotal = $this->getTotal();
+        $this->discount = $subtotal * ($percent / 100);
     }
 
     /**

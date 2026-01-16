@@ -13,62 +13,56 @@ class PDFGenerator {
     public static function generatePDF($invoice) {
         $dompdf = new Dompdf();
 
-        // Build HTML table for items
+        // Build HTML for invoice
         $itemsHtml = '';
         foreach ($invoice->getItems() as $item) {
-            $qty = $item['qty'] ?? 0;
+            $qty = $item['qty'] ?$item['qty']: 0;
             $lineTotal = $item['price'] * $qty;
             $itemsHtml .= "<tr>
-            <td>".htmlspecialchars($item['name'])."</td>
-            <td>$".number_format($item['price'], 2)."</td>
-            <td>$qty</td>
-            <td>$".number_format($lineTotal, 2)."</td>
-        </tr>";
+                <td>".htmlspecialchars($item['name'])."</td>
+                <td>$".number_format($item['price'],2)."</td>
+                <td>$qty</td>
+                <td>$".number_format($lineTotal,2)."</td>
+            </tr>";
         }
 
         $html = "
-    <html>
-    <head>
+        <html>
+        <head>
         <style>
-            body { font-family: Arial, sans-serif; }
+            body { font-family: DejaVu Sans, Arial, sans-serif; }
             table { border-collapse: collapse; width: 100%; }
             th, td { border: 1px solid #000; padding: 8px; text-align: left; }
             th { background-color: #f2f2f2; }
             h1 { text-align: center; }
-            p { font-size: 14px; }
         </style>
-    </head>
-    <body>
-        <h1>Invoice #{$invoice->getId()}</h1>
-        <p><strong>Customer:</strong> ".htmlspecialchars($invoice->getCustomer())."</p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Price</th>
-                    <th>Qty</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                $itemsHtml
-            </tbody>
-        </table>
-        <p><strong>Total: $".number_format($invoice->getTotal(), 2)."</strong></p>
-    </body>
-    </html>
-    ";
+        </head>
+        <body>
+            <h1>Invoice #{$invoice->getId()}</h1>
+            <p><strong>Customer:</strong> ".htmlspecialchars($invoice->getCustomer())."</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th><th>Price</th><th>Qty</th><th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    $itemsHtml
+                </tbody>
+            </table>
+            <p><strong>Total: $".number_format($invoice->getTotal(),2)."</strong></p>
+        </body>
+        </html>
+        ";
 
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $fileName = 'Invoice_'.$invoice->getId().'.pdf';
+        $fileName = __DIR__ . '/../Invoice_'.$invoice->getId().'.pdf';
+        file_put_contents($fileName, $dompdf->output()); // save directly
 
-        // **Directly save PDF to file**
-        file_put_contents($fileName, $dompdf->output());
-
-        return $fileName; // Returns the path to generated PDF
+        return $fileName;
     }
 
 
